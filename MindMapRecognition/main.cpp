@@ -110,7 +110,16 @@ void thresh_callback(int, void*)
         //imshow("Contours", drawing);
 
         imwrite(imageContourPath, drawing);
+
+
+
+        // начинаем сегментацию
+
+        vector<Point> mapVector = contours[contourIndexWithMaxPoints];
+
+
     }
 
 }
+
 

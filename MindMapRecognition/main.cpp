@@ -79,17 +79,17 @@ static void processImageWithNumber(int num) {
 }
 
 static void imageToElectronicMapTransfer(int x, int y) {
-    cout << "wasHeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeere";
     /// Calculate the distances to the contour
     int choosedNodeIndex = -1;
     Point clickPoint(x, y);
-    double dist = pointPolygonTest(nodesContours[0], clickPoint, true);
+    
+    double dist = std::abs(pointPolygonTest(nodesContours[0], clickPoint, true));
     choosedNodeIndex = 0;
     double minDist = dist;
 
 
     for (int i = 1; i < nodesContours.size(); ++i) {
-        dist = pointPolygonTest(nodesContours[i],clickPoint, true);
+        dist = std::abs(pointPolygonTest(nodesContours[i],clickPoint, true));
 
         if (dist < minDist) {
             minDist = dist;
@@ -97,14 +97,13 @@ static void imageToElectronicMapTransfer(int x, int y) {
         }
     }
 
-    drawContours(chooseCentralNodeImage, nodesContours, choosedNodeIndex, Scalar(255,0,0), 3, LINE_8, nodesContoursHierarchy, 0);
+    drawContours(chooseCentralNodeImage, nodesContours, choosedNodeIndex, Scalar(255,0,0), 4, LINE_8, nodesContoursHierarchy, 0);
 
 
 }
 
 static void mouseCallback(int event, int x, int y, int flags, void* param)
 {
-    cout << "yees";
     switch (event) {
     case CV_EVENT_MOUSEMOVE:
         break;
@@ -808,14 +807,15 @@ void thresh_callback(int, void*)
         }
 
         namedWindow("chooseCentralNodeWindow", 1);
-        imshow("chooseCentralNodeWindow", chooseCentralNodeImage);
 
         cvSetMouseCallback("chooseCentralNodeWindow", mouseCallback,&chooseCentralNodeImage);
+
 
         //imshow("chooseCentralNodeWindow", chooseCentralNodeImage);
 
         char key = 0;
         while ((int)key != 27) {
+            imshow("chooseCentralNodeWindow", chooseCentralNodeImage);
             key = waitKey(1);
         }
     }

@@ -127,11 +127,15 @@
   <ItemGroup>
     <ClCompile Include="Characteristic.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MapIterator.cpp" />
     <ClCompile Include="Neighbors.cpp" />
+    <ClCompile Include="myNode.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Characteristic.h" />
+    <ClInclude Include="MapIterator.h" />
     <ClInclude Include="Neighbors.h" />
+    <ClInclude Include="myNode.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

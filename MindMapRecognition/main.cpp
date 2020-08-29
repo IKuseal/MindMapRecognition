@@ -6,9 +6,12 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include <iostream>
+#include <queue>
+#include <unordered_map>
 
 #include "Characteristic.h"
 #include "Neighbors.h"
+#include "myNode.h"
 
 using namespace cv;
 using namespace std;
@@ -18,25 +21,187 @@ int thresh = 100;
 RNG rng(12345);
 void thresh_callback(int, void*);
 
+//stages
+std::string binarizationStageSign = "_binarization";
+std::string binarizationStagePath = "";
+
+std::string findingContoursStageSign = "_contour";
+std::string findingContoursStagePath = "";
+
+std::string identificationStageSign1 = "_identification1";
+std::string identificationStagePath1 = "";
+
+std::string identificationStageSign2 = "_identification2";
+std::string identificationStagePath2 = "";
+
+std::string extractionStageSign = "_extraction";
+std::string extractionStagePath = "";
+
 std::string basePath = "C:/Users/Kuseal/Downloads/img_";
 std::string version = "_pv_1";
-std::string contourSign = "_contour";
-std::string identifyStageSign = "_identify";
 std::string extensionSign = ".png";
 std::string imagePath = "";
-std::string imageContourPath = "";
-std::string imageIdentifyPath = "";
+
+
 
 vector<vector<Point> > nodesContours;
 vector<Vec4i> nodesContoursHierarchy;
 
+vector<vector<Point> > linesContours;
+vector<Vec4i> linesContoursHierarchy;
+ 
+
 Mat chooseCentralNodeImage;
 Mat src;
 
+static double calcDistBetweenPoints(Point2f p1, Point2f p2) {
+    return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2));
+}
+static double calcDistBetweenContours(vector<Point> &con1, vector <Point> &con2) {
+
+    double min, dist;
+    
+    min = std::abs(pointPolygonTest(con2, con1[0], true));
+
+    for (int i = 1; i < con1.size(); ++i) {
+        dist = std::abs(pointPolygonTest(con2, con1[i], true));
+
+        if (dist < min) {
+            min = dist;
+        }
+    }
+
+    return min;
+}
+static double myCalcDistBetweenContours(vector<Point> &con1, vector <Point> &con2) {
+
+    double min, dist;
+
+    min = calcDistBetweenPoints(con1[0], con2[0]);
+
+    for (int i = 0; i < con1.size(); ++i) {
+        for (int j = 0; j < con2.size(); ++j) {
+            dist = calcDistBetweenPoints(con1[i], con2[j]);
+
+            if (dist < min) {
+                min = dist;
+            }
+        }        
+    }
+
+    return min;
+}
+static void extractMap(int centralNodeId) {
+    // жёсткие костыли, потом исправить
+    vector<int > remainingNodes(nodesContours.size());
+    vector<int > remainingLines(linesContours.size());
+
+    for (int i = 0; i < remainingNodes.size(); ++i) {
+        remainingNodes[i] = i;
+    }
+
+    for (int i = 0; i < remainingLines.size(); ++i) {
+        remainingLines[i] = i;
+    }
+
+
+    queue <int> processedNodes = queue <int>();
+    queue <Scalar> colorsQueue;
+
+
+    std::vector<int>::iterator iterator;
+    // переменные цикла
+    vector<Point> temp(1, Point(0, 0));
+    vector<Point> nodeContour,nodeContour2, lineContour;
+    //vector<Point> &nodeContour(temp), &lineContour(temp);
+    vector<int> linesToErase;
+    int nodeContourId(-1), nodeContourId2(-1), lineContourId(-1);
+    double dist(-1), dist2(-1);
+    Point connectionPoint;
+
+    double minVal = 100;
+
+    Scalar red(0, 0, 255);
+    Scalar blue(255, 0, 0);
+    Scalar color(red), color2(red);
+
+    processedNodes.push(centralNodeId);
+    colorsQueue.push(red);
+
+    while (!processedNodes.empty()) {
+        nodeContourId = processedNodes.front();
+        nodeContour = nodesContours[nodeContourId];
+        processedNodes.pop();
+        iterator = find(remainingNodes.begin(), remainingNodes.end(), nodeContourId);
+        remainingNodes.erase(iterator);
+        
+        color = colorsQueue.front();
+        colorsQueue.pop();
+
+        if (color == red) {
+            color2 = blue;
+        }
+        else color2 = red;
+
+        drawContours(chooseCentralNodeImage, nodesContours, nodeContourId, color, 4, LINE_8, nodesContoursHierarchy, 0);
+
+        for (int i = 0; i < remainingLines.size(); ++i) {
+
+            lineContourId = remainingLines[i];
+            lineContour = linesContours[lineContourId];
+
+            dist = myCalcDistBetweenContours(nodeContour, lineContour);
+
+            if (dist < 2) {
+
+                for (int k = 0; k < remainingNodes.size(); ++k) {
+                    nodeContourId2 = remainingNodes[k];
+                    nodeContour2 = nodesContours[nodeContourId2];
+
+                    dist2 = myCalcDistBetweenContours(lineContour, nodeContour2);
+
+
+                    if (dist2 < 2) {
+
+                        processedNodes.push(nodeContourId2);
+
+                        colorsQueue.push(color2);
+
+                        linesToErase.push_back(lineContourId);
+                        break;
+                    }
+
+                }
+
+            }
+        }
+
+        while (!linesToErase.empty()) {
+            lineContourId = linesToErase.back();
+            linesToErase.pop_back();
+
+
+            iterator = find(remainingLines.begin(), remainingLines.end(), lineContourId);
+            remainingLines.erase(iterator);
+
+            drawContours(chooseCentralNodeImage, linesContours, lineContourId, color, 4, LINE_8, linesContoursHierarchy, 0);
+
+        }
+
+    }
+
+    imwrite(extractionStagePath, chooseCentralNodeImage);
+
+}
+
 static void processImageWithNumber(int num) {
+
     imagePath = basePath + to_string(num) + extensionSign;
-    imageContourPath = basePath + to_string(num) + contourSign + version + extensionSign;
-    imageIdentifyPath = basePath + to_string(num) + identifyStageSign + version + extensionSign;
+    binarizationStagePath = basePath + to_string(num) + binarizationStageSign + version + extensionSign;
+    findingContoursStagePath = basePath + to_string(num) + findingContoursStageSign + version + extensionSign;
+    identificationStagePath1 = basePath + to_string(num) + identificationStageSign1 + version + extensionSign;
+    identificationStagePath2 = basePath + to_string(num) + identificationStageSign2 + version + extensionSign;
+    extractionStagePath = basePath + to_string(num) + extractionStageSign + version + extensionSign;
 
     IplImage *image;
     src = imread(imagePath, IMREAD_COLOR); // Load an image
@@ -52,6 +217,8 @@ static void processImageWithNumber(int num) {
     threshold(src_gray, src_gray,
         230, 255,
         CV_THRESH_BINARY);
+
+    imwrite(binarizationStagePath, src_gray);
     /*adaptiveThreshold(src_gray, src_gray, 255, 1, 0, 1001,0);
     adaptiveThreshold(src_gray, src_gray, 255, 0, 0, 5, 0);*/
 
@@ -80,6 +247,7 @@ static void processImageWithNumber(int num) {
 
 static void imageToElectronicMapTransfer(int x, int y) {
     /// Calculate the distances to the contour
+    
     int choosedNodeIndex = -1;
     Point clickPoint(x, y);
     
@@ -95,11 +263,12 @@ static void imageToElectronicMapTransfer(int x, int y) {
             minDist = dist;
             choosedNodeIndex = i;
         }
+        
     }
 
     drawContours(chooseCentralNodeImage, nodesContours, choosedNodeIndex, Scalar(255,0,0), 4, LINE_8, nodesContoursHierarchy, 0);
 
-
+    extractMap(choosedNodeIndex);
 }
 
 static void mouseCallback(int event, int x, int y, int flags, void* param)
@@ -123,12 +292,16 @@ static void mouseCallback(int event, int x, int y, int flags, void* param)
 
 int main(int argc, char** argv)
 {
+  
     //imageChange
-    int temp = 1;
-    for (int i = temp; i <= temp; ++i) {
+    int low = 70;
+    int up = low;
+    for (int i = low; i <= up; ++i) {
+        cout << "i = " << i << endl;
         processImageWithNumber(i);
     }
 
+    
 
     waitKey();
 /*
@@ -173,9 +346,7 @@ void thresh_callback(int, void*)
         //imshow("Contours", drawing);
 
         //вернуть
-        //imwrite(imageContourPath, drawing);
-
-        
+        imwrite(findingContoursStagePath, drawing);
 
         // начинаем сегментацию
 
@@ -588,7 +759,7 @@ void thresh_callback(int, void*)
         }
 
         //вернуть
-        //imwrite(imageIdentifyPath, mapMat2);
+        imwrite(identificationStagePath1, mapMat2);
 
         //namedWindow("MapAttempt1");
         //imshow("MapAttempt1", mapMat2);
@@ -782,29 +953,53 @@ void thresh_callback(int, void*)
             }
         }
 
+        imwrite(identificationStagePath2, mapMat2);
+
+        Mat matForFindingLines = mapMat2.clone();
+        Mat matForFindingNodes = mapMat2.clone();
         // перекрашиваем, оставляем только узлы
         for (int c = 0; c < mapWidth; ++c) {
             for (int r = 0; r < mapHeight; ++r) {
 
-                if (mapMat2.at<Vec3b>(r, c) == Vec3b(255, 0, 0)) {
-                    mapMat2.at<Vec3b>(r, c) = Vec3b(0, 0, 0);
+                if (matForFindingNodes.at<Vec3b>(r, c) == Vec3b(255, 0, 0)) {
+                    matForFindingNodes.at<Vec3b>(r, c) = Vec3b(0, 0, 0);
                 }
                 else {
-                    mapMat2.at<Vec3b>(r, c) = Vec3b(255, 255, 255);
+                    matForFindingNodes.at<Vec3b>(r, c) = Vec3b(255, 255, 255);
                 }
             }
         }
         
-        Mat grayMapMat2;
-        cvtColor(mapMat2, grayMapMat2, COLOR_BGR2GRAY);
+        Mat gMatForFindingNodes;
+        cvtColor(matForFindingNodes, gMatForFindingNodes, COLOR_BGR2GRAY);
 
-        findContours(grayMapMat2, nodesContours, nodesContoursHierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
+        findContours(gMatForFindingNodes, nodesContours, nodesContoursHierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
 
+        // перекрашиваем, оставляем только линии
+        for (int c = 0; c < mapWidth; ++c) {
+            for (int r = 0; r < mapHeight; ++r) {
+
+                if (matForFindingLines.at<Vec3b>(r, c) == Vec3b(0, 255, 0)) {
+                    matForFindingLines.at<Vec3b>(r, c) = Vec3b(0, 0, 0);
+                }
+                else {
+                    matForFindingLines.at<Vec3b>(r, c) = Vec3b(255, 255, 255);
+                }
+            }
+        }
+
+        Mat gMatForFindingLines;
+        cvtColor(matForFindingLines, gMatForFindingLines, COLOR_BGR2GRAY);
+
+        findContours(gMatForFindingLines, linesContours, linesContoursHierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
+
+
+        // открываем окно для выбора центральньго цзла
         chooseCentralNodeImage = src.clone();
 
-        for (int i = 0; i < nodesContours.size(); ++i) {
+        /*for (int i = 0; i < nodesContours.size(); ++i) {
             drawContours(chooseCentralNodeImage, nodesContours, i, Scalar(0,0,255), 3, LINE_8, nodesContoursHierarchy, 0);
-        }
+        }*/
 
         namedWindow("chooseCentralNodeWindow", 1);
 

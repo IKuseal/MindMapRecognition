@@ -54,6 +54,8 @@ int Characteristic::getUpSideDiagonalPixLeng() {
 }
 void Characteristic::setUpSideDiagonalPixLeng(int num) {
     upSideDiagonalPixLeng_ = num;
+    upSideDiagonalLeng_ = (upSideDiagonalPixLeng_) * sqrt(5)/2;
+
 }
 
 int Characteristic::getDownSideDiagonalPixLeng() {
@@ -61,6 +63,7 @@ int Characteristic::getDownSideDiagonalPixLeng() {
 }
 void Characteristic::setDownSideDiagonalPixLeng(int num) {
     downSideDiagonalPixLeng_ = num;
+    downSideDiagonalLeng_ = (downSideDiagonalPixLeng_) * sqrt(5) / 2;
 }
 
 int Characteristic::getUpMainDiagonalPixLeng() {
@@ -68,6 +71,7 @@ int Characteristic::getUpMainDiagonalPixLeng() {
 }
 void Characteristic::setUpMainDiagonalPixLeng(int num) {
     upMainDiagonalPixLeng_ = num;
+    upMainDiagonalLeng_ = (upMainDiagonalPixLeng_) * sqrt(5) / 2;
 }
 
 int Characteristic::getDownMainDiagonalPixLeng() {
@@ -75,6 +79,7 @@ int Characteristic::getDownMainDiagonalPixLeng() {
 }
 void Characteristic::setDownMainDiagonalPixLeng(int num) {
     downMainDiagonalPixLeng_ = num;
+    downMainDiagonalLeng_ = (downMainDiagonalPixLeng_) * sqrt(5) / 2;
 }
 
 //leng
@@ -115,13 +120,13 @@ int Characteristic::getDownMainDiagonalLeng() {
 //other
 int Characteristic::getCharacteristicByOrder(int order) {
     
-    std::vector<int> arr{ verticalLeng_, mainDiagonalPixLeng_, horizontalLeng_, sideDiagonalLeng_,
-    upMainDiagonalPixLeng_,downMainDiagonalPixLeng_,downSideDiagonalPixLeng_,upSideDiagonalPixLeng_};
+    std::vector<int> arr{ verticalLeng_, mainDiagonalLeng_, horizontalLeng_, sideDiagonalLeng_,
+    upMainDiagonalLeng_,downMainDiagonalLeng_,downSideDiagonalLeng_,upSideDiagonalLeng_};
 
     //std::vector<int> arr{ verticalLeng_, mainDiagonalPixLeng_, horizontalLeng_, sideDiagonalLeng_};
 
     sort(arr.begin(), arr.end(), comp2);
    
-    return arr.at(order);
+    return arr.at(order-1);
 }
 

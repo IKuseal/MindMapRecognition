@@ -38,12 +38,14 @@ std::string identificationStagePath2 = "";
 std::string extractionStageSign = "_extraction";
 std::string extractionStagePath = "";
 
-std::string basePath = "C:/Users/Kuseal/Downloads/imgs/img_";
-std::string version = "_pv_1";
+std::string sourceBasePath = "C:/Users/Kuseal/diploma/imgs/img_";
 std::string extensionSign = ".png";
 std::string imagePath = "";
+std::string imageWritePath = "";
 
-
+// version depended
+std::string versionDependedBasePath = "C:/Users/Kuseal/diploma/imgs_v1/img_";
+std::string version = "_pv_1";
 
 vector<vector<Point> > nodesContours;
 vector<Vec4i> nodesContoursHierarchy;
@@ -308,17 +310,18 @@ static void extractMap(int centralNodeId) {
 
 static void processImageWithNumber(int num) {
 
-    imagePath = basePath + to_string(num) + extensionSign;
-    binarizationStagePath = basePath + to_string(num) + binarizationStageSign + version + extensionSign;
-    findingContoursStagePath = basePath + to_string(num) + findingContoursStageSign + version + extensionSign;
-    identificationStagePath1 = basePath + to_string(num) + identificationStageSign1 + version + extensionSign;
-    identificationStagePath2 = basePath + to_string(num) + identificationStageSign2 + version + extensionSign;
-    extractionStagePath = basePath + to_string(num) + extractionStageSign + version + extensionSign;
+    imagePath = sourceBasePath + to_string(num) + extensionSign;
+    imageWritePath = versionDependedBasePath + to_string(num) + extensionSign;
+    binarizationStagePath = versionDependedBasePath + to_string(num) + binarizationStageSign + version + extensionSign;
+    findingContoursStagePath = versionDependedBasePath + to_string(num) + findingContoursStageSign + version + extensionSign;
+    identificationStagePath1 = versionDependedBasePath + to_string(num) + identificationStageSign1 + version + extensionSign;
+    identificationStagePath2 = versionDependedBasePath + to_string(num) + identificationStageSign2 + version + extensionSign;
+    extractionStagePath = versionDependedBasePath + to_string(num) + extractionStageSign + version + extensionSign;
 
     IplImage *image;
     src = imread(imagePath, IMREAD_COLOR); // Load an image
 
-    imwrite(imagePath, src);
+    imwrite(imageWritePath, src);
 
     if (src.empty())
     {
@@ -406,7 +409,7 @@ int main(int argc, char** argv)
 {
   
     //imageChange
-    int low = 6;
+    int low = 97;
     int up = low;
     for (int i = low; i <= up; ++i) {
         cout << "i = " << i << endl;

@@ -126,7 +126,13 @@ int Characteristic::getCharacteristicByOrder(int order) {
     //std::vector<int> arr{ verticalLeng_, mainDiagonalPixLeng_, horizontalLeng_, sideDiagonalLeng_};
 
     sort(arr.begin(), arr.end(), comp2);
+
+    /*int val = 0;
+    for (int i = 4; i < arr.size(); ++i) {
+        val += arr[i];
+    }*/
    
     return arr.at(order-1);
+    //return val;
 }
 

@@ -57,6 +57,35 @@ vector<Vec4i> linesContoursHierarchy;
 Mat chooseCentralNodeImage;
 Mat src;
 
+int tempNum = 0;
+
+static void addNewImages(int num) {
+    imagePath = "C:/Users/Kuseal/diploma/imgs/" + to_string(tempNum) + extensionSign;
+
+    src = imread(imagePath, IMREAD_COLOR); // Load an image
+
+
+    if (src.empty())
+    {
+        cout << "Could not open or find the image!\n" << endl;
+
+        imagePath = "C:/Users/Kuseal/diploma/imgs/" + to_string(tempNum) + ".jpg";
+
+        src = imread(imagePath, IMREAD_COLOR); // Load an image
+
+        if (src.empty()) {
+            cout << "Could not open or find the image!\n" << endl;
+
+            return;
+        }
+
+    }
+
+    imageWritePath = sourceBasePath + to_string(num) + extensionSign;
+
+    imwrite(imageWritePath, src);
+}
+
 static void drawPolygon(Mat & source, vector<Point> & polygon, Vec3b color) {
     for (int i = 0; i < polygon.size(); ++i) {
 
@@ -205,6 +234,16 @@ static void extractMap(int centralNodeId) {
         remainingNodes[i] = i;
     }
 
+    std::vector<int>::iterator iterator;
+
+    for (int i = 0; i < nodesContours.size(); ++i) {
+        if (nodesContours[i].size() < 7) {
+            iterator = find(remainingNodes.begin(), remainingNodes.end(), i);
+            remainingNodes.erase(iterator);
+
+        }
+    }
+
     for (int i = 0; i < remainingLines.size(); ++i) {
         remainingLines[i] = i;
     }
@@ -214,7 +253,6 @@ static void extractMap(int centralNodeId) {
     queue <Scalar> colorsQueue;
 
 
-    std::vector<int>::iterator iterator;
     // переменные цикла
     vector<Point> temp(1, Point(0, 0));
     vector<Point> nodeContour,nodeContour2, lineContour;
@@ -233,7 +271,7 @@ static void extractMap(int centralNodeId) {
     processedNodes.push(centralNodeId);
     colorsQueue.push(red);
 
-    //drawContours(chooseCentralNodeImage, nodesContours, 12, color, 4, LINE_8, nodesContoursHierarchy, 0);
+    //drawContours(chooseCentralNodeImage, nodesContours, 2, color, 4, LINE_8, nodesContoursHierarchy, 0);
 
     while (!processedNodes.empty()) {
         nodeContourId = processedNodes.front();
@@ -318,15 +356,21 @@ static void processImageWithNumber(int num) {
     identificationStagePath2 = versionDependedBasePath + to_string(num) + identificationStageSign2 + version + extensionSign;
     extractionStagePath = versionDependedBasePath + to_string(num) + extractionStageSign + version + extensionSign;
 
-    IplImage *image;
-    src = imread(imagePath, IMREAD_COLOR); // Load an image
 
-    imwrite(imageWritePath, src);
+    src = imread(imagePath, IMREAD_COLOR); // Load an image
 
     if (src.empty())
     {
         cout << "Could not open or find the image!\n" << endl;
+        
+        return;
+
     }
+    
+    imwrite(imageWritePath, src);
+
+    //addNewImages(num);
+
 
     cvtColor(src, src_gray, COLOR_BGR2GRAY);
 
@@ -356,7 +400,7 @@ static void processImageWithNumber(int num) {
     //const int max_thresh = 255;
     //createTrackbar("Canny thresh:", source_window, &thresh, max_thresh, thresh_callback);
 
-    thresh_callback(0, 0);
+    //thresh_callback(0, 0);
     return;
 }
 
@@ -407,21 +451,25 @@ static void mouseCallback(int event, int x, int y, int flags, void* param)
 
 int main(int argc, char** argv)
 {
-  
-    //imageChange
-    int low = 97;
-    int up = low;
+
+    // imageChange
+
+    int low = 120;
+
+    int up =  376;
+
     for (int i = low; i <= up; ++i) {
-        cout << "i = " << i << endl;
+        //cout << "i = " << i << endl;
         processImageWithNumber(i);
+        ++tempNum;
     }
 
-    
+    // waitKey();
 
-    waitKey();
-/*
-    int a;
+    /*int a;
+
     cin >> a;*/
+
     return 0;
 }
 
@@ -434,16 +482,17 @@ static int drawMapContours(vector<vector<Point>>& contours, vector<Vec4i>& hiera
         Scalar color = Scalar(rng.uniform(100, 256), rng.uniform(0, 256), rng.uniform(0, 256));
         if (contours[i].size() > maxPoints) {
             maxPoints = contours[i].size();
-            drawContours(drawing, contours, contourIndexWithMaxPoints, color, 2, LINE_8, hierarchy, 0);
+            drawContours(drawing, contours, contourIndexWithMaxPoints, color, 0, LINE_8, hierarchy, 0);
             contourIndexWithMaxPoints = i;
         }
         else {
-            drawContours(drawing, contours, i, color, 2, LINE_8, hierarchy, 0);
+            drawContours(drawing, contours, i, color, 0, LINE_8, hierarchy, 0);
         }
     }
 
+
     Scalar color = Scalar(60, 60, 60);
-    drawContours(drawing, contours, contourIndexWithMaxPoints, color, 2, LINE_8, hierarchy, 0);
+    drawContours(drawing, contours, contourIndexWithMaxPoints, color, 0, LINE_8, hierarchy, 0);
 
     //imshow("Contours", drawing);
 
@@ -451,11 +500,12 @@ static int drawMapContours(vector<vector<Point>>& contours, vector<Vec4i>& hiera
     imwrite(findingContoursStagePath, drawing);
 
     return contourIndexWithMaxPoints;
+
 }
 
-static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours, vector<vector<Characteristic>> &characteristicMatrix, Mat & resultMat) {
+static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours, vector<vector<Characteristic>> &outputCharacteristicMatrix, Mat & resultMat) {
+    
     resultMat = Mat(source.size(), CV_8UC3, Scalar(255, 255, 255));
-
 
     int mapHeight = source.size().height;
     int mapWidth = source.size().width;
@@ -474,7 +524,36 @@ static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours
     vector<vector<Point> > contours2;
     contours2.push_back(mapVector);
 
+    /*Mat tempMat(resultMat.size(), CV_8UC3, Scalar(255, 255, 255));
+
+    Point pp;
+    for (int i = 0; i < mapVector.size(); ++i) {
+        pp.x = mapVector[i].x;
+        pp.y = mapVector[i].y;
+
+        tempMat.at<Vec3b>(pp) = Vec3b(0, 0, 0);
+
+    }
+
+    imshow("temp2", tempMat);*/
+
     fillPoly(resultMat, contours2, Scalar(0, 0, 0));
+
+    mapWidth += 2;
+    mapHeight += 2;
+
+    Mat resultMatCopy(mapHeight, mapWidth, CV_8UC3, Scalar(255, 255, 255));
+
+    for (int c = 0; c < mapWidth - 2; ++c) {
+        for (int r = 0; r < mapHeight - 2; ++r) {
+            resultMatCopy.at<Vec3b>(r + 1, c + 1) = resultMat.at<Vec3b>(r, c);
+        }
+    }
+
+    //imshow("temp", resultMatCopy);
+
+    vector<vector<Characteristic>> characteristicMatrix(mapHeight,
+        vector<Characteristic>(mapWidth, Characteristic()));
 
     /*namedWindow("MapAttempt");
     imshow("MapAttempt", mapMat);*/
@@ -485,24 +564,25 @@ static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours
     int u = 0;
     cout << mapWidth << endl;
     cout << mapHeight << endl;
-    cout << resultMat.size().width;
+    cout << resultMatCopy.size().width;
 
-    for (int c = 0; c < mapWidth; ++c) {
-        //дл€ первого р€да
-        if (resultMat.at<Vec3b>(0, c) == Vec3b(0, 0, 0)) {
-            characteristicMatrix[0][c].setVerticalPixLeng(1);
-        }
+    for (int c = 1; c < mapWidth-1; ++c) {
+        
+        ////дл€ первого р€да
+        //if (resultMatCopy.at<Vec3b>(0, c) == Vec3b(0, 0, 0)) {
+        //    characteristicMatrix[0][c].setVerticalPixLeng(1);
+        //}
 
         //дл€ средней части
-        for (int r = 1; r < mapHeight - 1; ++r) {
-            if (resultMat.at<Vec3b>(r, c) == Vec3b(0, 0, 0)) {
+        for (int r = 1; r < mapHeight-1; ++r) {
+            if (resultMatCopy.at<Vec3b>(r, c) == Vec3b(0, 0, 0)) {
                 val = characteristicMatrix[r - 1][c].getVerticalPixLeng() + 1;
                 characteristicMatrix[r][c].setVerticalPixLeng(val);
 
-                if (resultMat.at<Vec3b>(r + 1, c) == Vec3b(255, 255, 255)) {
+                if (resultMatCopy.at<Vec3b>(r + 1, c) == Vec3b(255, 255, 255)) {
                     u = r - 1;
 
-                    while (resultMat.at<Vec3b>(u, c) == Vec3b(0, 0, 0)) {
+                    while (resultMatCopy.at<Vec3b>(u, c) == Vec3b(0, 0, 0)) {
                         characteristicMatrix[u][c].setVerticalPixLeng(val);
                         --u;
                     }
@@ -510,39 +590,39 @@ static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours
             }
         }
 
-        //дл€ последнего р€да
-        if (resultMat.at<Vec3b>(mapHeight - 1, c) == Vec3b(0, 0, 0)) {
-            val = characteristicMatrix[mapHeight - 2][c].getVerticalPixLeng() + 1;
-            characteristicMatrix[mapHeight - 1][c].setVerticalPixLeng(val);
+        ////дл€ последнего р€да
+        //if (resultMatCopy.at<Vec3b>(mapHeight - 1, c) == Vec3b(0, 0, 0)) {
+        //    val = characteristicMatrix[mapHeight - 2][c].getVerticalPixLeng() + 1;
+        //    characteristicMatrix[mapHeight - 1][c].setVerticalPixLeng(val);
 
-            u = mapHeight - 2;
+        //    u = mapHeight - 2;
 
-            while (resultMat.at<Vec3b>(u, c) == Vec3b(0, 0, 0)) {
-                characteristicMatrix[u][c].setVerticalPixLeng(val);
-                --u;
-            }
+        //    while (resultMatCopy.at<Vec3b>(u, c) == Vec3b(0, 0, 0)) {
+        //        characteristicMatrix[u][c].setVerticalPixLeng(val);
+        //        --u;
+        //    }
 
-        }
+        //}
     }
 
     //вычисление горизонтальной характеристики
-    for (int r = 0; r < mapHeight; ++r) {
+    for (int r = 1; r < mapHeight-1; ++r) {
 
-        // дл€ первого столбца
-        if (resultMat.at<Vec3b>(r, 0) == Vec3b(0, 0, 0)) {
-            characteristicMatrix[r][0].setHorizontalPixLeng(1);
-        }
+        //// дл€ первого столбца
+        //if (resultMatCopy.at<Vec3b>(r, 0) == Vec3b(0, 0, 0)) {
+        //    characteristicMatrix[r][0].setHorizontalPixLeng(1);
+        //}
 
         //дл€ средней части
         for (int c = 1; c < mapWidth - 1; ++c) {
-            if (resultMat.at<Vec3b>(r, c) == Vec3b(0, 0, 0)) {
+            if (resultMatCopy.at<Vec3b>(r, c) == Vec3b(0, 0, 0)) {
                 val = characteristicMatrix[r][c - 1].getHorizontalPixLeng() + 1;
                 characteristicMatrix[r][c].setHorizontalPixLeng(val);
 
-                if (resultMat.at<Vec3b>(r, c + 1) == Vec3b(255, 255, 255)) {
+                if (resultMatCopy.at<Vec3b>(r, c + 1) == Vec3b(255, 255, 255)) {
                     u = c - 1;
 
-                    while (resultMat.at<Vec3b>(r, u) == Vec3b(0, 0, 0)) {
+                    while (resultMatCopy.at<Vec3b>(r, u) == Vec3b(0, 0, 0)) {
                         characteristicMatrix[r][u].setHorizontalPixLeng(val);
                         --u;
                     }
@@ -550,19 +630,19 @@ static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours
             }
         }
 
-        //дл€ последнего столбца
-        if (resultMat.at<Vec3b>(r, mapWidth - 1) == Vec3b(0, 0, 0)) {
-            val = characteristicMatrix[r][mapWidth - 2].getHorizontalPixLeng() + 1;
-            characteristicMatrix[r][mapWidth - 1].setHorizontalPixLeng(val);
+        ////дл€ последнего столбца
+        //if (resultMatCopy.at<Vec3b>(r, mapWidth - 1) == Vec3b(0, 0, 0)) {
+        //    val = characteristicMatrix[r][mapWidth - 2].getHorizontalPixLeng() + 1;
+        //    characteristicMatrix[r][mapWidth - 1].setHorizontalPixLeng(val);
 
-            u = mapWidth - 2;
+        //    u = mapWidth - 2;
 
-            while (resultMat.at<Vec3b>(r, u) == Vec3b(0, 0, 0)) {
-                characteristicMatrix[r][u].setHorizontalPixLeng(val);
-                --u;
-            }
+        //    while (resultMatCopy.at<Vec3b>(r, u) == Vec3b(0, 0, 0)) {
+        //        characteristicMatrix[r][u].setHorizontalPixLeng(val);
+        //        --u;
+        //    }
 
-        }
+        //}
     }
 
 
@@ -601,14 +681,14 @@ static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours
         // средн€€ часть
 
         for (int r = 1; r < mapHeight - 1; ++r) {
-            if (resultMat.at<Vec3b>(r, c) == Vec3b(0, 0, 0)) {
+            if (resultMatCopy.at<Vec3b>(r, c) == Vec3b(0, 0, 0)) {
                 r1 = r - 1;
                 c1 = c - 1;
                 val = characteristicMatrix[r1][c1].getMainDiagonalPixLeng() + 1;
                 characteristicMatrix[r][c].setMainDiagonalPixLeng(val);
 
-                if (resultMat.at<Vec3b>(r + 1, c + 1) == Vec3b(255, 255, 255)) {
-                    while (resultMat.at<Vec3b>(r1, c1) == Vec3b(0, 0, 0)) {
+                if (resultMatCopy.at<Vec3b>(r + 1, c + 1) == Vec3b(255, 255, 255)) {
+                    while (resultMatCopy.at<Vec3b>(r1, c1) == Vec3b(0, 0, 0)) {
                         characteristicMatrix[r1][c1].setMainDiagonalPixLeng(val);
                         --r1;
                         --c1;
@@ -620,8 +700,8 @@ static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours
                 val = characteristicMatrix[r1][c1].getSideDiagonalPixLeng() + 1;
                 characteristicMatrix[r][c].setSideDiagonalPixLeng(val);
 
-                if (resultMat.at<Vec3b>(r - 1, c + 1) == Vec3b(255, 255, 255)) {
-                    while (resultMat.at<Vec3b>(r1, c1) == Vec3b(0, 0, 0)) {
+                if (resultMatCopy.at<Vec3b>(r - 1, c + 1) == Vec3b(255, 255, 255)) {
+                    while (resultMatCopy.at<Vec3b>(r1, c1) == Vec3b(0, 0, 0)) {
                         characteristicMatrix[r1][c1].setSideDiagonalPixLeng(val);
                         ++r1;
                         --c1;
@@ -651,14 +731,11 @@ static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours
     }
 
     //вычисление дополнительных диагональных характеристик
-    //дл€ простоты пока что считаю, что у мен€ результат не зависит границы слоем 2 пиксел€
 
-    for (int c = 2; c < mapWidth - 2; ++c) {
+    for (int c = 1; c < mapWidth - 1; ++c) {
 
-        //средн€€ часть
-
-        for (int r = 2; r < mapHeight - 2; ++r) {
-            if (resultMat.at<Vec3b>(r, c) == Vec3b(0, 0, 0)) {
+        for (int r = 1; r < mapHeight - 1; ++r) {
+            if (resultMatCopy.at<Vec3b>(r, c) == Vec3b(0, 0, 0)) {
 
                 //up main
                 r1 = r - 1;
@@ -674,8 +751,8 @@ static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours
                 val = characteristicMatrix[r1][c1].getUpMainDiagonalPixLeng() + 1;
                 characteristicMatrix[r][c].setUpMainDiagonalPixLeng(val);
 
-                if (resultMat.at<Vec3b>(r2, c2) == Vec3b(255, 255, 255)) {
-                    while (resultMat.at<Vec3b>(r1, c1) == Vec3b(0, 0, 0)) {
+                if (resultMatCopy.at<Vec3b>(r2, c2) == Vec3b(255, 255, 255)) {
+                    while (resultMatCopy.at<Vec3b>(r1, c1) == Vec3b(0, 0, 0)) {
                         characteristicMatrix[r1][c1].setUpMainDiagonalPixLeng(val);
                         if (r1 % 2 == 0) {
                             --c1;
@@ -698,8 +775,8 @@ static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours
                 val = characteristicMatrix[r1][c1].getDownMainDiagonalPixLeng() + 1;
                 characteristicMatrix[r][c].setDownMainDiagonalPixLeng(val);
 
-                if (resultMat.at<Vec3b>(r2, c2) == Vec3b(255, 255, 255)) {
-                    while (resultMat.at<Vec3b>(r1, c1) == Vec3b(0, 0, 0)) {
+                if (resultMatCopy.at<Vec3b>(r2, c2) == Vec3b(255, 255, 255)) {
+                    while (resultMatCopy.at<Vec3b>(r1, c1) == Vec3b(0, 0, 0)) {
                         characteristicMatrix[r1][c1].setDownMainDiagonalPixLeng(val);
                         if (c1 % 2 == 0) {
                             --r1;
@@ -722,8 +799,8 @@ static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours
                 val = characteristicMatrix[r1][c1].getDownSideDiagonalPixLeng() + 1;
                 characteristicMatrix[r][c].setDownSideDiagonalPixLeng(val);
 
-                if (resultMat.at<Vec3b>(r2, c2) == Vec3b(255, 255, 255)) {
-                    while (resultMat.at<Vec3b>(r1, c1) == Vec3b(0, 0, 0)) {
+                if (resultMatCopy.at<Vec3b>(r2, c2) == Vec3b(255, 255, 255)) {
+                    while (resultMatCopy.at<Vec3b>(r1, c1) == Vec3b(0, 0, 0)) {
                         characteristicMatrix[r1][c1].setDownSideDiagonalPixLeng(val);
                         if (c1 % 2 == 0) {
                             ++r1;
@@ -737,9 +814,9 @@ static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours
 
     }
 
-    for (int c = 2; c < mapWidth - 2; ++c) {
-        for (int r = mapHeight - 2; r > 2; --r) {
-            if (resultMat.at<Vec3b>(r, c) == Vec3b(0, 0, 0)) {
+    for (int c = 1; c < mapWidth - 1; ++c) {
+        for (int r = mapHeight-2; r >= 1; --r) {
+            if (resultMatCopy.at<Vec3b>(r, c) == Vec3b(0, 0, 0)) {
                 //up side
                 r1 = r + 1;
                 r2 = r - 1;
@@ -754,8 +831,8 @@ static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours
                 val = characteristicMatrix[r1][c1].getUpSideDiagonalPixLeng() + 1;
                 characteristicMatrix[r][c].setUpSideDiagonalPixLeng(val);
 
-                if (resultMat.at<Vec3b>(r2, c2) == Vec3b(255, 255, 255)) {
-                    while (resultMat.at<Vec3b>(r1, c1) == Vec3b(0, 0, 0)) {
+                if (resultMatCopy.at<Vec3b>(r2, c2) == Vec3b(255, 255, 255)) {
+                    while (resultMatCopy.at<Vec3b>(r1, c1) == Vec3b(0, 0, 0)) {
                         characteristicMatrix[r1][c1].setUpSideDiagonalPixLeng(val);
                         if (r1 % 2 == 0) {
                             --c1;
@@ -766,6 +843,12 @@ static void calculateCharacteristic(Mat & source,vector<vector<Point>> &contours
             }
         }
     }
+
+    for (int i = 0; i < mapHeight - 2; ++i) {
+        for (int j = 0; j < mapWidth-2; ++j) {
+            outputCharacteristicMatrix[i][j] = characteristicMatrix[i + 1][j + 1];
+        }
+    }
 }
 
 void thresh_callback(int, void*)
@@ -773,15 +856,35 @@ void thresh_callback(int, void*)
     const char* source_window2 = "Canny";
     //namedWindow(source_window2);
 
+    int mapHeight = src_gray.size().height +4;
+    int mapWidth = src_gray.size().width + 4;
+
+
+
+    Mat src_gray_copy(mapHeight, mapWidth, CV_8UC1, 255);
+
+    for (int c = 0; c < mapWidth - 4; ++c) {
+        for (int r = 0; r < mapHeight - 4; ++r) {
+            src_gray_copy.at<uchar>(r + 2, c + 2) = src_gray.at<uchar>(r, c);
+        }
+    }
+
+    src_gray = src_gray_copy;
+
+
     //Mat canny_output;
     //Canny(src_gray, canny_output, thresh, thresh * 2);
     //imshow("Canny", canny_output);
+
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
+
     //findContours(canny_output, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
+
     findContours(src_gray, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
 
     
+
     if (!contours.empty()) {
 
         int contourIndexWithMaxPoints = drawMapContours(contours, hierarchy);
@@ -789,8 +892,6 @@ void thresh_callback(int, void*)
          //начинаем сегментацию
 
 
-        int mapHeight = src_gray.size().height;
-        int mapWidth = src_gray.size().width;
 
         vector<vector<Characteristic>> characteristicMatrix(mapHeight,
             vector<Characteristic>(mapWidth, Characteristic()));
@@ -1122,6 +1223,7 @@ void thresh_callback(int, void*)
 
         findContours(gMatForFindingNodes, nodesContours, nodesContoursHierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
         //findPolygons(matForFindingNodes, nodesContours);
+
 
         /*Mat matVis(matForFindingNodes.size(), CV_8UC3, Scalar(255, 255, 255));
 
